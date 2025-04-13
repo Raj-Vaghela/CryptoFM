@@ -3,30 +3,13 @@
   "builds": [
     {
       "src": "voice-server-vercel.js",
-      "use": "@vercel/node",
-      "config": { "includeFiles": ["public/**"] }
-    },
-    {
-      "src": "agent-control.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/voice/(.*)",
-      "dest": "voice-server-vercel.js"
-    },
-    {
-      "src": "/audio/(.*)",
-      "dest": "voice-server-vercel.js"
-    },
-    {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "voice-server-vercel.js"
+      "dest": "/voice-server-vercel.js"
     }
   ]
 } 

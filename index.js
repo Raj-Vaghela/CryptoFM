@@ -21,4 +21,9 @@ For more information, see README.md
 `);
 
 // Launch the monitor
-require('./monitor'); 
+require('./monitor');
+
+// Simple entrypoint for Vercel
+// This re-exports the Express app from voice-server-vercel.js
+
+module.exports = require('./voice-server-vercel.js'); 
