@@ -16,12 +16,13 @@ module.exports = (req, res) => {
   
   console.log('API Route: /next-segment was called (root level)');
   
-  // Try a different audio source - GitHub hosted MP3
-  const audioUrl = "https://github.com/anars/blank-audio/raw/master/1-second-of-silence.mp3";
+  // Audio from NASA's public audio library which is free to use and accessible
+  // This is a short beep sound that should reliably work in most browsers
+  const audioUrl = "https://www.nasa.gov/wp-content/uploads/2016/10/beep-sound.wav";
   
   console.log(`Returning segment with audio URL: ${audioUrl}`);
   
-  // Return a segment with a widely compatible audio URL
+  // Return a segment with a reliable audio URL
   const response = {
     hasSegment: true,
     id: Date.now(),
