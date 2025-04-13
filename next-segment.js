@@ -16,12 +16,20 @@ module.exports = (req, res) => {
   
   console.log('API Route: /next-segment was called (root level)');
   
-  // Return a segment with a public audio URL that works
-  // Using a Creative Commons audio sample that's publicly available
-  res.status(200).json({
+  // Using a different audio URL that's widely compatible and CDN-hosted
+  const audioUrl = "https://cdn.freesound.org/previews/459/459659_5622826-lq.mp3";
+  
+  console.log(`Returning segment with audio URL: ${audioUrl}`);
+  
+  // Return a segment with a widely compatible audio URL
+  const response = {
     hasSegment: true,
     id: Date.now(),
-    audioUrl: "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+    audioUrl: audioUrl,
     text: "Welcome to Crypto FM! Today we're looking at market trends for Bitcoin, Ethereum, and other major cryptocurrencies. Bitcoin has seen significant movement in the past 24 hours, while Ethereum continues its steady growth."
-  });
+  };
+  
+  console.log('Response payload:', JSON.stringify(response));
+  
+  res.status(200).json(response);
 }; 
