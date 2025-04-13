@@ -215,4 +215,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-Created for Encode AI London Hackathon 2025 
+Created for Encode AI London Hackathon 2025
