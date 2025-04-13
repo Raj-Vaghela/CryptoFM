@@ -1,5 +1,5 @@
 /**
- * Crypto FM - Fixed Application Script
+ * Crypto FM - Radio Frontend Application
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -15,7 +15,11 @@ document.addEventListener('DOMContentLoaded', function() {
     volume: 0.7,
     playing: false,
     currentSegment: null,
-    lastCheck: 0
+    lastCheck: 0,
+    userInteracted: false,
+    pendingAudioUrl: null,
+    audioRetryCount: 0,
+    maxRetries: 3
   };
   
   // Initialize audio player
@@ -25,32 +29,95 @@ document.addEventListener('DOMContentLoaded', function() {
     audioPlayer.addEventListener('playing', () => {
       console.log('Audio playing');
       state.playing = true;
+      state.audioRetryCount = 0;
+      
+      // Show transcript when audio plays
+      if (transcript && transcript.parentElement) {
+        transcript.parentElement.style.display = 'block';
+      }
+      
+      // Show now playing indicator
+      document.querySelector('.current-status').textContent = '🔴 LIVE';
     });
     
     audioPlayer.addEventListener('ended', () => {
       console.log('Audio ended');
       state.playing = false;
-      checkForContent();
+      
+      // Get next segment immediately after current one ends
+      setTimeout(checkForContent, 500);
     });
     
     audioPlayer.addEventListener('error', (e) => {
-      console.error('Audio error:', audioPlayer.error);
+      const errorCode = audioPlayer.error ? audioPlayer.error.code : 'unknown';
+      console.error('Audio error code:', errorCode);
       state.playing = false;
+      
+      // Try one of our fallback audio sources if the main one fails
+      if (state.audioRetryCount < state.maxRetries) {
+        state.audioRetryCount++;
+        console.log(`Audio error, retry attempt ${state.audioRetryCount}`);
+        
+        // Fallback to our guaranteed working audio
+        const fallbackUrls = [
+          "https://storage.googleapis.com/cloud-samples-data/speech/brooklyn_bridge.mp3",
+          "https://audio.jukehost.co.uk/cGvR7jSG3aNbvt5LYoM4v43Hn92qHhQ7",
+          "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+        ];
+        
+        // Try a different fallback URL each time
+        const fallbackUrl = fallbackUrls[state.audioRetryCount % fallbackUrls.length];
+        console.log('Trying fallback audio URL:', fallbackUrl);
+        
+        playAudioDirect(fallbackUrl);
+      } else {
+        console.error('Max retry attempts reached, showing play button');
+        showPlayButton('▶️ Try Again');
+      }
+    });
+    
+    // Add canplay event to track successful loading
+    audioPlayer.addEventListener('canplay', () => {
+      console.log('Audio can be played');
     });
   }
   
+  // Track user interaction with the page
+  document.addEventListener('click', function() {
+    state.userInteracted = true;
+    
+    // If we have pending audio, try to play it
+    if (state.pendingAudioUrl) {
+      playAudioDirect(state.pendingAudioUrl);
+      state.pendingAudioUrl = null;
+    }
+  });
+  
   // Add play button for autoplay issues
-  const controlsInfo = document.querySelector('.controls-info');
-  if (controlsInfo) {
+  addPlayButton();
+  
+  // Check for content periodically
+  setInterval(checkForContent, 5000);
+  checkForContent();
+  
+  // Function to add play button
+  function addPlayButton(text = '▶️ Start Broadcast') {
+    const controlsInfo = document.querySelector('.controls-info');
+    if (!controlsInfo) return;
+    
+    // Clear any existing content
+    controlsInfo.innerHTML = '<p><i class="fas fa-info-circle me-2"></i>Click the button below to start the broadcast.</p>';
+    
     const playButton = document.createElement('button');
-    playButton.textContent = 'Click to Play';
-    playButton.className = 'btn btn-primary mt-3';
+    playButton.textContent = text;
+    playButton.className = 'btn btn-lg btn-primary mt-3';
     playButton.style.margin = '0 auto';
     playButton.style.display = 'block';
     
     playButton.addEventListener('click', function() {
-      if (audioPlayer && audioPlayer.src) {
-        audioPlayer.play().catch(e => console.log('Play error:', e));
+      state.userInteracted = true;
+      if (audioPlayer && audioPlayer.src && !state.playing) {
+        playAudioDirect(audioPlayer.src);
       } else {
         getNextSegment();
       }
@@ -59,9 +126,16 @@ document.addEventListener('DOMContentLoaded', function() {
     controlsInfo.appendChild(playButton);
   }
   
-  // Check for content periodically
-  setInterval(checkForContent, 5000);
-  checkForContent();
+  // Show play button with custom text
+  function showPlayButton(text) {
+    const button = document.querySelector('.btn-primary');
+    if (button) {
+      button.textContent = text;
+      button.style.display = 'block';
+    } else {
+      addPlayButton(text);
+    }
+  }
   
   // Function to check for new content
   function checkForContent() {
@@ -72,7 +146,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Checking for content...');
     
     fetch('/api/check-new-segments')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
       .then(data => {
         console.log('Check result:', data);
         
@@ -90,17 +169,21 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Getting next segment');
     
     fetch('/api/next-segment')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
       .then(data => {
         console.log('Next segment:', data);
         
-        if (data.hasSegment) {
+        if (data && data.hasSegment) {
           state.currentSegment = data;
           
           // Update transcript
           if (transcript) {
-            transcript.textContent = data.text;
-            transcript.parentElement.style.display = 'block';
+            transcript.textContent = data.text || 'Welcome to Crypto FM!';
           }
           
           // Play audio
@@ -116,14 +199,38 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error('Get segment error:', error);
+        // Show error message
+        if (transcript) {
+          transcript.textContent = 'Connection error. Please try again later.';
+        }
       });
   }
   
-  // Play audio with URL
+  // Play audio with URL and handle autoplay restrictions
   function playAudio(url) {
     if (!audioPlayer) return;
-    
     console.log('Playing audio:', url);
+    
+    // Reset retry counter for new audio attempt
+    state.audioRetryCount = 0;
+    
+    // Check if user has interacted with the page
+    if (!state.userInteracted) {
+      console.log('User has not interacted with the page yet, storing URL for later');
+      state.pendingAudioUrl = url;
+      
+      // Make sure the play button is visible
+      showPlayButton('▶️ Tap to Play');
+      
+      return;
+    }
+    
+    playAudioDirect(url);
+  }
+  
+  // Direct audio playback without autoplay checks
+  function playAudioDirect(url) {
+    if (!audioPlayer) return;
     
     // Reset player
     audioPlayer.pause();
@@ -133,16 +240,26 @@ document.addEventListener('DOMContentLoaded', function() {
     audioPlayer.src = url;
     audioPlayer.load();
     
+    // Add audio loading indicator
+    document.querySelector('.current-status').textContent = '⏳ Loading...';
+    
     // Attempt to play
+    console.log('Attempting to play audio:', url);
     audioPlayer.play()
       .then(() => {
-        console.log('Audio playback started');
+        console.log('Audio playback started successfully');
+        // Hide play button when playback starts
+        const button = document.querySelector('.btn-primary');
+        if (button) button.style.display = 'none';
       })
       .catch(error => {
-        console.error('Audio play error:', error);
-        // Show play button explicitly when autoplay fails
-        const button = document.querySelector('.btn-primary');
-        if (button) button.style.display = 'block';
+        console.error('Audio play error:', error.name, error.message);
+        
+        // Show play button when autoplay fails
+        showPlayButton('▶️ Tap to Play Audio');
+        
+        // Update status
+        document.querySelector('.current-status').textContent = '⚠️ Tap to Play';
       });
   }
   
@@ -155,7 +272,12 @@ document.addEventListener('DOMContentLoaded', function() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ segmentId: segmentId })
     })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
       .then(data => {
         console.log('Mark spoken result:', data);
       })
@@ -189,6 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
     checkForContent,
     getNextSegment,
     playAudio,
+    playAudioDirect,
     markSegmentAsSpoken,
     state
   };

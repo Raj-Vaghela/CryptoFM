@@ -16,10 +16,13 @@ module.exports = (req, res) => {
   
   console.log('API Route: /check-new-segments was called (root level)');
   
-  // Return data indicating we have content available
+  // Return data indicating we always have content available
+  // This ensures the frontend will always try to fetch a new segment
   res.status(200).json({
+    success: true,
     newContent: true,
     pending: 1,
-    ready: 0
+    ready: 0,
+    lastUpdate: new Date().toISOString()
   });
 }; 

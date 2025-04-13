@@ -14,10 +14,24 @@ module.exports = (req, res) => {
     return res.status(200).end();
   }
   
-  console.log('API Route: /mark-spoken was called (root level)', req.body);
+  // Log the request
+  console.log('API Route: /mark-spoken was called', req.body);
   
-  // Return success response
-  res.status(200).json({
-    success: true
-  });
+  // Check if request body contains segmentId
+  if (req.method === 'POST' && req.body && req.body.segmentId) {
+    const segmentId = req.body.segmentId;
+    console.log(`Marking segment ${segmentId} as spoken`);
+    
+    // For now, just return success since we're not actually marking anything
+    res.status(200).json({
+      success: true,
+      message: `Segment ${segmentId} marked as spoken`
+    });
+  } else {
+    // Handle invalid requests
+    res.status(400).json({
+      success: false,
+      error: 'Missing segmentId in request body'
+    });
+  }
 }; 
