@@ -16,8 +16,8 @@ module.exports = (req, res) => {
   
   console.log('API Route: /next-segment was called (root level)');
   
-  // Using a different audio URL that's widely compatible and CDN-hosted
-  const audioUrl = "https://cdn.freesound.org/previews/459/459659_5622826-lq.mp3";
+  // Try a different audio source - GitHub hosted MP3
+  const audioUrl = "https://github.com/anars/blank-audio/raw/master/1-second-of-silence.mp3";
   
   console.log(`Returning segment with audio URL: ${audioUrl}`);
   

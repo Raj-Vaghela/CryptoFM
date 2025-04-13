@@ -7,7 +7,7 @@
     { "src": "mark-spoken.js", "use": "@vercel/node" },
     { "src": "status.js", "use": "@vercel/node" },
     { "src": "debug-logs.js", "use": "@vercel/node" },
-    { "src": "client-debug.js", "use": "@vercel/node" }
+    { "src": "client-debug.js", "use": "@vercel/static" }
   ],
   "rewrites": [
     { "source": "/api/next-segment", "destination": "/next-segment.js" },
@@ -15,7 +15,6 @@
     { "source": "/api/mark-spoken", "destination": "/mark-spoken.js" },
     { "source": "/api/status", "destination": "/status.js" },
     { "source": "/api/debug-logs", "destination": "/debug-logs.js" },
-    { "source": "/client-debug.js", "destination": "/client-debug.js" },
     { "source": "/(.*)", "destination": "/index.js" }
   ],
   "headers": [
