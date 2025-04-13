@@ -4,12 +4,14 @@
     { "src": "index.js", "use": "@vercel/node" },
     { "src": "next-segment.js", "use": "@vercel/node" },
     { "src": "check-new-segments.js", "use": "@vercel/node" },
-    { "src": "mark-spoken.js", "use": "@vercel/node" }
+    { "src": "mark-spoken.js", "use": "@vercel/node" },
+    { "src": "status.js", "use": "@vercel/node" }
   ],
   "rewrites": [
     { "source": "/api/next-segment", "destination": "/next-segment.js" },
     { "source": "/api/check-new-segments", "destination": "/check-new-segments.js" },
     { "source": "/api/mark-spoken", "destination": "/mark-spoken.js" },
+    { "source": "/api/status", "destination": "/status.js" },
     { "source": "/(.*)", "destination": "/index.js" }
   ],
   "headers": [

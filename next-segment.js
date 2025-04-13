@@ -16,11 +16,12 @@ module.exports = (req, res) => {
   
   console.log('API Route: /next-segment was called (root level)');
   
-  // Return a mock segment for demonstration
+  // Return a segment with a public audio URL that works
+  // Using a Creative Commons audio sample that's publicly available
   res.status(200).json({
     hasSegment: true,
     id: Date.now(),
-    audioUrl: null,
-    text: "This is a placeholder text from the root-level API route. Your frontend is now successfully connected to the backend."
+    audioUrl: "https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav",
+    text: "Welcome to Crypto FM! Today we're looking at market trends for Bitcoin, Ethereum, and other major cryptocurrencies. Bitcoin has seen significant movement in the past 24 hours, while Ethereum continues its steady growth."
   });
 }; 
