@@ -1,15 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "voice-server-vercel.js",
-      "use": "@vercel/node"
+  "public": true,
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/voice-server-vercel.js"
-    }
-  ]
+  }
 } 

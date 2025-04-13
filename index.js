@@ -1,29 +1,67 @@
 /**
- * RADIOO - Cryptocurrency Data Logger
- * 
- * Main entry point - redirects to monitor.js
+ * Crypto FM - Simple Serverless Entry Point
  */
 
-console.log(`
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║                   📡  RADIOO  📡                              ║
-║                 Cryptocurrency Data Logger                    ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
+const express = require('express');
+const cors = require('cors');
 
-RADIOO Data Logger
+// Create a simple Express app
+const app = express();
 
-This service fetches and logs cryptocurrency data at regular intervals.
-Starting the data logging service with crash recovery monitor...
+// Enable CORS and JSON parsing
+app.use(cors());
+app.use(express.json());
 
-For more information, see README.md
-`);
+// Basic health check route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Crypto FM Voice Server',
+    timestamp: new Date().toISOString(),
+    message: 'Server is running'
+  });
+});
 
-// Launch the monitor
-require('./monitor');
+// Voice health check endpoint
+app.get('/voice/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Voice service available',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
-// Simple entrypoint for Vercel
-// This re-exports the Express app from voice-server-vercel.js
+// Environment information
+app.get('/debug', (req, res) => {
+  // Check tmp directory
+  const fs = require('fs');
+  let tmpWritable = false;
+  
+  try {
+    fs.writeFileSync('/tmp/test.txt', 'test');
+    fs.unlinkSync('/tmp/test.txt');
+    tmpWritable = true;
+  } catch (error) {
+    console.error('Error with tmp directory:', error);
+  }
+  
+  res.json({
+    environment: process.env.NODE_ENV,
+    nodeVersion: process.version,
+    platform: process.platform,
+    directories: {
+      tmp: {
+        exists: fs.existsSync('/tmp'),
+        writable: tmpWritable
+      }
+    },
+    env: {
+      // Only include safe environment variables
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL
+    }
+  });
+});
 
-module.exports = require('./voice-server-vercel.js'); 
+// Export for Vercel
+module.exports = app; 
