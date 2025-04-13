@@ -1,0 +1,42 @@
+{
+  "name": "radioo",
+  "version": "1.0.0",
+  "description": "Cryptocurrency data logging and analysis tool",
+  "main": "index.js",
+  "scripts": {
+    "start": "node agent-control.js",
+    "api": "node data-api-server.js",
+    "analyst": "node data-analyst-agent.js",
+    "jockey": "node radio-jockey-agent.js",
+    "voice": "node voice-server.js",
+    "start:all": "node scripts/start-all.js",
+    "start:logger": "node server.js",
+    "start:monitor": "node monitor.js",
+    "start:analyst": "node data-analyst-agent.js",
+    "start:jockey": "node radio-jockey-agent.js",
+    "start:voice": "node voice-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^5.0.0",
+    "@google/generative-ai": "^0.1.3",
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.2",
+    "uuid": "^9.0.1"
+  },
+  "keywords": [
+    "cryptocurrency",
+    "bitcoin",
+    "data-logging",
+    "analytics",
+    "AI",
+    "Gemini",
+    "API",
+    "radio",
+    "text-to-speech"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RADIOO - Cryptocurrency Radio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="vintage-radio">
+      <div class="radio-case">
+        <!-- Top Crypto Display Section -->
+        <div class="display-section">
+          <div class="price-display">
+            <div class="display-row">
+              <div class="display-label">NFT PRICE</div>
+              <div class="display-value" id="nftPrice">2.88</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">24H CHANGE</div>
+              <div class="display-value" id="priceChange">+1.5%</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">VOLUME</div>
+              <div class="display-value" id="tradeVolume">1,234.5 ETH</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">HOLDERS</div>
+              <div class="display-value" id="holders">10,492</div>
+            </div>
+          </div>
+          
+          <div class="tabs-section">
+            <div class="crypto-tabs">
+              <div class="tab active" data-coin="eth">ETH</div>
+              <div class="tab" data-coin="btc">BTC</div>
+              <div class="tab" data-coin="sol">SOL</div>
+            </div>
+            <div class="category-tabs">
+              <div class="category active">TOP NFTs</div>
+              <div class="category">TRENDING</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Control Panel with Horizontal Sliders -->
+        <div class="control-panel">
+          <div class="sliders-section">
+            <div class="slider-wrapper">
+              <div class="slider-label">VOLUME</div>
+              <div class="slider-control">
+                <div class="slider-track">
+                  <div class="slider-handle" id="volumeHandle">
+                    <div class="handle-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="buttons-section">
+            <div class="status-display">
+              <div class="status-badge">
+                <i class="fas fa-broadcast-tower me-1"></i> LIVE BROADCAST
+              </div>
+              <div class="status-indicator">
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Ticker Tape -->
+        <div class="ticker-section">
+          <div class="ticker-tape" id="tickerTape">
+            <span class="ticker-item">BTC $1,000,000 (PAST THE MOON)</span>
+            <span class="ticker-item">SOL $5,000 (PAST MERCURY)</span>
+            <span class="ticker-item">DOGE $15 (PAST ALL CATS)</span>
+          </div>
+        </div>
+        
+        <!-- Hidden Audio Player -->
+        <audio id="audioPlayer" style="display: none;"></audio>
+        
+        <!-- Current Transcript (Hidden by Default) -->
+        <div class="transcript-container" style="display: none;">
+          <p id="currentTranscript" class="script-text">Connecting to broadcast...</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="controls-info mt-4 text-center">
+      <p><i class="fas fa-info-circle me-2"></i>Adjust the VOLUME slider to control audio level. Broadcasting starts automatically.</p>
+    </div>
+
+    <footer class="text-center mt-4 mb-5">
+      <p class="text-muted">© 2025 RADIOO - Cryptocurrency Broadcasting</p>
+    </footer>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
