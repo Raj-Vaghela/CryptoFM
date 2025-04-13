@@ -1,27 +1,14 @@
 /**
- * Crypto FM - Agent Control System
+ * RADIOO - Agent Control
  * 
- * Central controller for all AI agents and services in the Crypto FM ecosystem.
+ * This script starts both the data logger and analyst agents
+ * in separate processes and manages them.
  */
 
-const express = require('express');
-const { exec } = require('child_process');
-const path = require('path');
-const fs = require('fs');
 require('dotenv').config();
-
-// Vercel environment setup
-const isProduction = process.env.NODE_ENV === 'production';
-
-// If in production (Vercel) environment, run setup
-if (isProduction) {
-  try {
-    // Load and run setup script
-    require('./vercel-setup').ensureDirectories();
-  } catch (error) {
-    console.error('Error setting up Vercel environment:', error);
-  }
-}
+const { spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const LOGS_DIR = path.join(__dirname, 'logs');
@@ -41,7 +28,7 @@ console.log = function() {
 function startProcess(name, script) {
   console.log(`Starting ${name} process...`);
   
-  const process = exec(`node ${script}`, {
+  const process = spawn('node', [script], {
     stdio: 'pipe',
     detached: false
   });

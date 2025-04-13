@@ -7,118 +7,104 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="style.css">
-  <!-- Load fallback audio data first -->
-  <script src="/offline-mp3.js"></script>
-  <!-- Debug script with inline script as fallback -->
-  <script src="/debug.js"></script>
-  <script>
-    // Inline debugging in case the external debug.js fails to load
-    if (typeof CryptoFMDebug === 'undefined') {
-      console.log('Creating inline debug helper');
-      window.CryptoFMDebug = {
-        testAudio: function(url) {
-          // If offline-mp3.js is loaded, try that first
-          if (window.playFallbackBeep) {
-            console.log('Testing with built-in fallback audio');
-            window.playFallbackBeep();
-          }
-          
-          const audioUrl = url || 'https://storage.googleapis.com/cloud-samples-data/speech/brooklyn_bridge.mp3';
-          console.log('Testing audio playback:', audioUrl);
-          
-          const audio = new Audio(audioUrl);
-          audio.volume = 0.5;
-          
-          audio.addEventListener('canplaythrough', () => console.log('✅ Audio can play through'));
-          audio.addEventListener('playing', () => console.log('✅ Audio started playing'));
-          audio.addEventListener('error', (e) => console.error('❌ Audio error:', e));
-          
-          audio.play()
-            .then(() => console.log('✅ Audio play command accepted'))
-            .catch(err => console.error('❌ Audio play rejected:', err.message));
-          
-          return audio;
-        },
-        
-        testEndpoint: function(endpoint) {
-          console.log('Testing API endpoint:', endpoint);
-          
-          return fetch('/api/' + endpoint)
-            .then(res => res.json())
-            .then(data => {
-              console.log('✅ API response:', data);
-              return data;
-            })
-            .catch(err => {
-              console.error('❌ API error:', err);
-              return null;
-            });
-        },
-        
-        runTests: function() {
-          console.log('🔍 Running all tests...');
-          this.testEndpoint('status');
-          this.testEndpoint('next-segment')
-            .then(data => {
-              if (data && data.audioUrl) {
-                console.log('🔊 Testing audio from API response');
-                this.testAudio(data.audioUrl);
-              }
-            });
-          this.testAudio();
-        }
-      };
-      console.log('Inline debug helper ready');
-    }
-  </script>
 </head>
 <body>
   <div class="container">
-    <header class="text-center py-3">
-      <h1 class="vintage-text">CRYPTO FM</h1>
-      <p class="tagline">Your source for cryptocurrency updates</p>
-    </header>
-    
-    <div class="radio-container">
-      <div class="speaker-grille"></div>
-      
-      <div class="radio-display">
-        <div class="display-content">
-          <div class="status-bar">
-            <span class="current-status">⚠️ Not Connected</span>
-            <span class="signal-strength">
-              <i class="fas fa-signal"></i>
-            </span>
+    <div class="vintage-radio">
+      <div class="radio-case">
+        <!-- Top Crypto Display Section -->
+        <div class="display-section">
+          <div class="price-display">
+            <div class="display-row">
+              <div class="display-label">NFT PRICE</div>
+              <div class="display-value" id="nftPrice">2.88</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">24H CHANGE</div>
+              <div class="display-value" id="priceChange">+1.5%</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">VOLUME</div>
+              <div class="display-value" id="tradeVolume">1,234.5 ETH</div>
+            </div>
+            <div class="display-row">
+              <div class="display-label">HOLDERS</div>
+              <div class="display-value" id="holders">10,492</div>
+            </div>
           </div>
-          <div class="transcript-container" style="display: none;">
-            <p id="currentTranscript">Loading crypto news...</p>
+          
+          <div class="tabs-section">
+            <div class="crypto-tabs">
+              <div class="tab active" data-coin="eth">ETH</div>
+              <div class="tab" data-coin="btc">BTC</div>
+              <div class="tab" data-coin="sol">SOL</div>
+            </div>
+            <div class="category-tabs">
+              <div class="category active">TOP NFTs</div>
+              <div class="category">TRENDING</div>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      <div class="controls">
-        <div class="volume-control">
-          <div class="slider-track">
-            <div id="volumeHandle" class="slider-handle"></div>
-          </div>
-          <span class="volume-label">VOLUME</span>
         </div>
         
-        <div class="controls-info">
-          <p><i class="fas fa-info-circle me-2"></i>Waiting for broadcast to begin...</p>
+        <!-- Control Panel with Horizontal Sliders -->
+        <div class="control-panel">
+          <div class="sliders-section">
+            <div class="slider-wrapper">
+              <div class="slider-label">VOLUME</div>
+              <div class="slider-control">
+                <div class="slider-track">
+                  <div class="slider-handle" id="volumeHandle">
+                    <div class="handle-indicator"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="buttons-section">
+            <div class="status-display">
+              <div class="status-badge">
+                <i class="fas fa-broadcast-tower me-1"></i> LIVE BROADCAST
+              </div>
+              <div class="status-indicator">
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot"></div>
+                <div class="indicator-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Ticker Tape -->
+        <div class="ticker-section">
+          <div class="ticker-tape" id="tickerTape">
+            <span class="ticker-item">BTC $1,000,000 (PAST THE MOON)</span>
+            <span class="ticker-item">SOL $5,000 (PAST MERCURY)</span>
+            <span class="ticker-item">DOGE $15 (PAST ALL CATS)</span>
+          </div>
+        </div>
+        
+        <!-- Hidden Audio Player -->
+        <audio id="audioPlayer" style="display: none;"></audio>
+        
+        <!-- Current Transcript (Hidden by Default) -->
+        <div class="transcript-container" style="display: none;">
+          <p id="currentTranscript" class="script-text">Connecting to broadcast...</p>
         </div>
       </div>
     </div>
     
-    <div class="ticker-container">
-      <div id="tickerTape" class="ticker-content">
-        Bitcoin $64,200 ↑ 3.5% • Ethereum $3,100 ↑ 2.1% • Solana $155.50 ↑ 7.0% • Chainlink $14.25 ↑ 1.2% • Ripple $0.52 ↓ 0.8% • Cardano $0.45 ↑ 3.2% •
-      </div>
+    <div class="controls-info mt-4 text-center">
+      <p><i class="fas fa-info-circle me-2"></i>Adjust the VOLUME slider to control audio level. Broadcasting starts automatically.</p>
     </div>
-    
-    <audio id="audioPlayer" style="display:none;"></audio>
+
+    <footer class="text-center mt-4 mb-5">
+      <p class="text-muted">© 2025 Crypto FM - Cryptocurrency Broadcasting</p>
+    </footer>
   </div>
-  
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

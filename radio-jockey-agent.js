@@ -214,10 +214,10 @@ function getLastSentence(text, maxChars) {
 }
 
 /**
- * ### Generate a New Script Segment
- * @param {string} report - The analysis report
+ * ### Generate Script Segment using Gemini
+ * @param {string} report - Market analysis report
  * @param {string} previousScript - Previous script content
- * @returns {string} New script segment
+ * @returns {Promise<string>} Generated script segment
  */
 async function generateScriptSegment(report, previousScript) {
   const fallbackDisclaimer = `
@@ -243,7 +243,7 @@ async function generateScriptSegment(report, previousScript) {
     });
     
     const isNewBroadcast = previousScript.trim().length === 0;
-    const previousScriptContext = isNewBroadcast ? '' : getLastSentence(previousScript, 1000);
+    const previousScriptContext = isNewBroadcast ? '' : getLastSentence(previousScript, 1500); // Increased context size
     const includeDisclaimer = !isNewBroadcast && Math.random() < 0.2; // 20% chance for continuation
     
     // Get voice style instructions based on configuration
@@ -253,57 +253,91 @@ async function generateScriptSegment(report, previousScript) {
     
     if (isNewBroadcast) {
       prompt = `
-      You are a professional cryptocurrency radio news reporter and DJ for Crypto FM, a cryptocurrency radio broadcast service. 
-      Based on the following market analysis report, create an engaging intro and first segment for a radio broadcast.
-      
-      Your audience is cryptocurrency investors and enthusiasts. ${voiceStyleInstructions}
-      
-      Use a natural speaking style appropriate for radio. Include brief transitions and verbal timestamps.
-      
-      CRITICAL INSTRUCTION: The script should ONLY contain the exact words the speaker will say, with NO sound effects, audio cues, pauses for callers, or any bracketed directions like [SOUND: ...] or [PAUSE]. Do NOT include any elements that are not spoken words.
-      
-      IMPORTANT: DO NOT use any SSML tags, XML, or special markup in the script. Use only plain, natural text. For cryptocurrency terms, spell them out normally without any special pronunciation markup.
-      
-      Start with a brief introduction, including the station name (Crypto FM), your name (choose an appropriate DJ name), and the current time (e.g., "It's ${getCurrentTimePhrase()}"). Then, include a disclaimer that this is an AI-generated broadcast and the information should not be considered financial advice. Then, proceed to the market updates from the report.
-      
-      CURRENT MARKET REPORT:
-      
-      
-      Create a 2-3 minute opening segment (approximately 300-450 words) that feels like the start of a professional 
-      cryptocurrency radio broadcast. Focus on the BREAKING NEWS, EXECUTIVE SUMMARY, and key highlights from the MARKET ANALYSIS 
-      and TOP CRYPTOCURRENCY ANALYSIS sections. Include natural transitions.
-      
-      REMINDER: The script should ONLY contain plain spoken words. NO audio directions, sound effects, or anything in brackets. NO SSML or XML tags of any kind.
-      `;
+    You are a professional cryptocurrency radio news broadcaster for Crypto FM, a cryptocurrency radio broadcast service.
+    
+    Your audience is cryptocurrency investors and enthusiasts. ${voiceStyleInstructions}
+    
+    Speak in a professional yet engaging and conversational tone, suited for radio. Use natural transitions and verbal timestamps like "It's ${getCurrentTimePhrase()}".
+    
+    📢 IMPORTANT INSTRUCTIONS:
+    - Only output the exact words the host will speak
+    - Do NOT include sound effects, caller prompts, or any bracketed directions
+    - DO NOT use any SSML tags, XML, or special markup in the script
+    - Use seamless opening and closing phrases that will work well for audio continuity
+    - Focus on creating complete thoughts and sentences that can stand alone
+    
+    🎙 BEGIN THE BROADCAST WITH:
+    1. A short intro with the station name (Crypto FM), your DJ name, and the current time
+    2. A clear disclaimer that this is an AI-generated broadcast and not financial advice
+    3. Market coverage from the report below
+    
+    📊 MARKET DATA:
+    ${report}
+    
+    🎯 TASK:
+    Create a 2-3 minute spoken script (approx. 300–450 words) for the opening broadcast segment.
+    
+    Focus on:
+    - EXECUTIVE SUMMARY
+    - MARKET ANALYSIS
+    - TOP CRYPTOCURRENCY ANALYSIS
+    
+    IMPORTANT ABOUT BREAKING NEWS:
+    - Only mention "BREAKING NEWS" if the report explicitly states critical market developments
+    - If the report states "No breaking news available" or similar, then present a normal market update without any breaking news announcement
+    - Present factual market information regardless of whether there's breaking news or not
+    
+    Keep the tone dynamic and easy to follow. Prioritize clarity, spoken flow, and pacing.
+    Close with a transition that sets up smoothly for the next segment.
+    
+    REMINDER: The final output must be spoken text only. No visual formatting, non-spoken elements, or SSML tags.
+    `;
     } else {
       prompt = `
-      You are a professional cryptocurrency radio news reporter and DJ for Crypto FM, a cryptocurrency radio broadcast service.
-      Continue the ongoing broadcast with a new 1-2 minute segment (approximately 150-300 words).
-      
-      CURRENT MARKET REPORT:
-      ${report}
-      
-      PREVIOUS BROADCAST SEGMENT:
-      ${previousScriptContext}
-      
-      Continue the broadcast in a natural way. Pick up where the previous segment left off, perhaps by referencing a point mentioned earlier or introducing a new topic related to the ongoing discussion. Do not repeat information already covered in the previous segment.
-      
-      Focus on new or updated information from the report that hasn't been covered yet, such as detailed cryptocurrency analysis, whale activity, or market predictions, depending on what's available.
-      
-      ${voiceStyleInstructions} Include occasional transition phrases and verbal timestamps (e.g., "As of ${getCurrentTimePhrase()}").
-      
-      CRITICAL INSTRUCTION: The script should ONLY contain the exact words the speaker will say, with NO sound effects, audio cues, pauses for callers, or any bracketed directions like [SOUND: ...] or [PAUSE]. Do NOT include any elements that are not spoken words.
-      
-      IMPORTANT: DO NOT use any SSML tags, XML, or special markup in the script. Use only plain, natural text. For cryptocurrency terms, spell them out normally without any special pronunciation markup or phoneme tags.
-      
-      DO NOT start with an introduction again - continue naturally from the previous segment.
-      THIS IS A CONTINUATION, so avoid phrases like "welcome back" or reintroducing yourself.
-      Just continue as if you were speaking continuously.
-      
-      REMINDER: The script must contain ONLY natural spoken text. NO audio directions, sound effects, or anything in brackets. NO SSML or XML tags of any kind.
-      `;
-    }
+    You are a professional cryptocurrency radio news broadcaster for Crypto FM, a cryptocurrency radio broadcast service.
     
+    Continue the current broadcast in a natural, flowing manner. Your task is to create a seamless listening experience.
+    
+    ${voiceStyleInstructions} Include verbal timestamps like "As of ${getCurrentTimePhrase()}" where appropriate.
+    
+    📢 CRITICAL RULES:
+    - Begin with a smooth transition picking up from the previous segment
+    - Ensure content flows logically from what was said before
+    - Create natural bridges between topics
+    - Avoid awkward pauses or jarring topical shifts
+    - DO NOT use any SSML tags, XML, or special markup in the script
+    - Finish with a complete thought that could lead naturally to another segment
+    
+    📻 CONTEXT (PREVIOUS SEGMENT ENDED WITH):
+    ${previousScriptContext}
+    
+    📊 MARKET REPORT:
+    ${report}
+    
+    🧠 TASK:
+    Write a natural continuation of the broadcast — around 1-2 minutes (approx. 150–300 words).
+    
+    If the previous segment was discussing:
+    - A specific cryptocurrency → Either continue that analysis or transition to a related coin/topic
+    - Market trends → Expand with specific examples or move to predictions
+    - Breaking news → Provide more context or analysis of the impact
+    
+    IMPORTANT ABOUT BREAKING NEWS:
+    - ONLY mention "Breaking news" for genuinely significant developments 
+    - This means major price movements (>10%), regulatory announcements, hacks, or industry-changing events
+    - The report must explicitly state these as critical developments
+    - If there are no such developments, just present the content as regular market information
+    
+    ${includeDisclaimer ? "Please include a natural reminder that this is an AI-generated broadcast." : ""}
+    
+    For perfect audio continuity:
+    - Start with a phrase that feels like a continuation
+    - End with a complete thought that sounds natural if followed by another segment
+    
+    REMINDER: Output must contain only what the host would say out loud. No non-verbal directions, visual markup, or SSML tags.
+    `;
+    }
+
     const maxRetries = 3;
     let retries = 0;
     let result = null;

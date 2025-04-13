@@ -1,12 +1,7 @@
 /**
  * Crypto FM - Voice Management System
  * 
- * Handles script tracking, Google Cloud TTS integration, and audio file management.
- * This module provides core functionality for:
- * - Managing the queue of text segments to be spoken
- * - Converting text to speech using Google Cloud TTS
- * - Organizing audio files between current and archive directories
- * - Cleaning up old spoken segments
+ * Handles script tracking, Google Cloud TTS integration, and audio file management
  */
 
 const fs = require('fs');
@@ -14,36 +9,28 @@ const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
 
-// Check for production environment (Vercel)
-const isProduction = process.env.NODE_ENV === 'production';
+// Directory structure
+const SCRIPTS_DIR = path.join(__dirname, 'scripts');
+const SPOKEN_DIR = path.join(__dirname, 'scripts/spoken');
+const CURRENT_DIR = path.join(__dirname, 'scripts/current');
+const QUEUE_FILE = path.join(__dirname, 'scripts/queue.json');
 
-/**
- * Directory structure configuration
- * In production (Vercel), use /tmp directory which is writable
- * In development, use local directories relative to the module
- */
-const SCRIPTS_DIR = isProduction ? '/tmp/scripts' : path.join(__dirname, 'scripts');
-const SPOKEN_DIR = isProduction ? '/tmp/scripts/spoken' : path.join(__dirname, 'scripts/spoken');
-const CURRENT_DIR = isProduction ? '/tmp/scripts/current' : path.join(__dirname, 'scripts/current');
-const QUEUE_FILE = isProduction ? '/tmp/scripts/queue.json' : path.join(__dirname, 'scripts/queue.json');
-
-/**
- * Google Cloud Text-to-Speech API Configuration
- * Uses environment variables for API key and voice settings
- */
-const GOOGLE_CLOUD_TTS_API_KEY = process.env.GOOGLE_CLOUD_TTS_API_KEY;
-const GCP_VOICE_NAME = 'en-GB-Chirp3-HD-Orus'; // British voice with premium quality
+// Google Cloud TTS Configuration
+const GOOGLE_CLOUD_TTS_API_KEY = process.env.GOOGLE_CLOUD_TTS_API_KEY || "AIzaSyAOloEpj-ZHJF6U08cDq9FbpYiLzosKQ5Y";
 const GCP_VOICE_LANGUAGE = process.env.GCP_VOICE_LANGUAGE || 'en-GB';
 const GCP_VOICE_GENDER = process.env.GCP_VOICE_GENDER || 'MALE';
+
+// Voice selection based on language
+const GCP_VOICE_NAME = GCP_VOICE_LANGUAGE === 'en-US' 
+  ? 'en-US-Neural2-J' // American voice with neural quality
+  : 'en-GB-Neural2-B'; // British voice with neural quality
+
 const TTS_API_ENDPOINT = 'https://texttospeech.googleapis.com/v1/text:synthesize';
 
 // Archive configuration
 const MAX_SCRIPT_AGE_DAYS = 7; // Keep spoken scripts for 7 days
 
-/**
- * Initialize directory structure and queue file
- * Creates necessary directories if they don't exist
- */
+// Ensure directories exist
 [SPOKEN_DIR, CURRENT_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -65,28 +52,17 @@ if (!GOOGLE_CLOUD_TTS_API_KEY) {
   console.log('Google Cloud TTS API key configured successfully');
 }
 
-/**
- * Read the script queue from file
- * @returns {Object} Queue object containing segments and lastPosition
- */
+// Read the script queue
 function getScriptQueue() {
   return JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf8'));
 }
 
-/**
- * Update the script queue on disk
- * @param {Object} queue - The updated queue object
- */
+// Update the script queue
 function updateScriptQueue(queue) {
   fs.writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2));
 }
 
-/**
- * Add a new segment to the queue
- * @param {string} segment - Text content to be spoken
- * @param {string} timestamp - Optional timestamp (defaults to current time)
- * @returns {Object} The newly created segment object
- */
+// Add a new segment to the queue
 function addSegmentToQueue(segment, timestamp) {
   const queue = getScriptQueue();
   const segmentId = Date.now();
@@ -95,7 +71,7 @@ function addSegmentToQueue(segment, timestamp) {
     id: segmentId,
     text: segment,
     timestamp: timestamp || new Date().toISOString(),
-    status: 'pending', // Possible statuses: pending, ready, spoken
+    status: 'pending',
     audioFile: null
   });
   
@@ -103,10 +79,7 @@ function addSegmentToQueue(segment, timestamp) {
   return queue.segments[queue.segments.length - 1];
 }
 
-/**
- * Mark a segment as spoken and move its audio file to the archive
- * @param {number} segmentId - ID of the segment to mark as spoken
- */
+// Mark segment as spoken
 function markSegmentAsSpoken(segmentId) {
   const queue = getScriptQueue();
   const segment = queue.segments.find(s => s.id === segmentId);
@@ -126,11 +99,7 @@ function markSegmentAsSpoken(segmentId) {
   }
 }
 
-/**
- * Get the next segment that needs to be spoken
- * Returns the first segment with status 'pending' or 'ready'
- * @returns {Object|undefined} The next segment or undefined if none available
- */
+// Get the next segment to speak
 function getNextSegmentToSpeak() {
   const queue = getScriptQueue();
   return queue.segments.find(s => s.status === 'pending' || s.status === 'ready');
@@ -138,8 +107,6 @@ function getNextSegmentToSpeak() {
 
 /**
  * Generate audio from script using Google Cloud TTS with API key
- * Handles text cleaning, chunking for long texts, and audio file generation
- * 
  * @param {string} text - Text to convert to speech
  * @param {number} segmentId - ID of the segment
  * @returns {Promise<string|null>} Path to the audio file or null if error
@@ -175,9 +142,21 @@ async function generateAudio(text, segmentId) {
         }
         
         // Find the last sentence end before the limit
-        const lastSentenceEnd = cleanText.substring(startIndex, endIndex).lastIndexOf('.');
-        if (lastSentenceEnd > 0) {
-          endIndex = startIndex + lastSentenceEnd + 1;
+        // Look for periods followed by space or newline, question marks, or exclamation points
+        const chunk = cleanText.substring(startIndex, endIndex);
+        const sentenceEndRegex = /[.!?]\s+(?=[A-Z])/g;
+        let matches = [...chunk.matchAll(sentenceEndRegex)];
+        
+        if (matches.length > 0) {
+          // Use the last sentence end found
+          const lastMatch = matches[matches.length - 1];
+          endIndex = startIndex + lastMatch.index + 2; // +2 to include the punctuation and space
+        } else {
+          // If no sentence end found, look for commas as fallback
+          const lastComma = chunk.lastIndexOf(', ');
+          if (lastComma > 0) {
+            endIndex = startIndex + lastComma + 2;
+          }
         }
         
         textChunks.push(cleanText.substring(startIndex, endIndex));
@@ -193,6 +172,18 @@ async function generateAudio(text, segmentId) {
     for (let i = 0; i < textChunks.length; i++) {
       const chunk = textChunks[i];
       
+      // Configure audio settings based on voice language
+      const audioConfig = {
+        audioEncoding: 'MP3'
+      };
+      
+      // Only add speakingRate for en-US voices (not supported for en-GB HD voices)
+      if (GCP_VOICE_LANGUAGE === 'en-US') {
+        audioConfig.speakingRate = 0.97; // Slightly slower for better clarity
+        audioConfig.pitch = 0.0;
+        audioConfig.volumeGainDb = 0.0;
+      }
+      
       // Make request to Google Cloud TTS using API key
       const response = await axios({
         method: 'POST',
@@ -207,7 +198,7 @@ async function generateAudio(text, segmentId) {
             name: GCP_VOICE_NAME,
             ssmlGender: GCP_VOICE_GENDER
           },
-          audioConfig: { audioEncoding: 'MP3' }
+          audioConfig: audioConfig
         }
       });
       
@@ -236,16 +227,13 @@ async function generateAudio(text, segmentId) {
   } catch (error) {
     console.error('Error generating audio with Google Cloud TTS:', error.message);
     if (error.response) {
-      console.error('API Error:', error.response.data);
+      console.error('API Response:', error.response.data);
     }
     return null;
   }
 }
 
-/**
- * Clean up old spoken segments
- * Removes segments and audio files older than MAX_SCRIPT_AGE_DAYS
- */
+// Clean up old spoken segments
 function cleanupOldSpokenSegments() {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - MAX_SCRIPT_AGE_DAYS);
@@ -267,13 +255,7 @@ function cleanupOldSpokenSegments() {
   console.log(`Cleaned up old spoken segments older than ${MAX_SCRIPT_AGE_DAYS} days`);
 }
 
-/**
- * Read the full script and extract new segments
- * Checks if there's new content since the last read position
- * and adds it to the queue
- * 
- * @returns {Object|null} The newly created segment or null if no new content
- */
+// Read the full script and extract new segments
 function processFullScript() {
   const fullScriptPath = path.join(SCRIPTS_DIR, 'full-script.txt');
   if (!fs.existsSync(fullScriptPath)) {
@@ -317,10 +299,6 @@ function processFullScript() {
 // Run cleanup daily
 setInterval(cleanupOldSpokenSegments, 24 * 60 * 60 * 1000);
 
-/**
- * Export the public API of this module
- * These functions can be used by the voice server
- */
 module.exports = {
   processFullScript,
   getNextSegmentToSpeak,
