@@ -1,7 +1,12 @@
 /**
- * RADIOO - Voice Server
+ * Crypto FM - Voice Server
  * 
- * REST API server for voice integration, script management and frontend communication
+ * This module provides a REST API server for voice integration, script management and frontend communication.
+ * It handles:
+ *  - Converting text scripts to speech using Google Cloud TTS
+ *  - Serving audio files to the frontend player
+ *  - Managing the queue of spoken and pending scripts
+ *  - Providing API endpoints for the frontend to interact with
  */
 
 const express = require('express');
@@ -10,41 +15,53 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-// Load voice management module
+// Import voice management functions from the voice-management module
 const { 
-  processFullScript, 
-  getNextSegmentToSpeak, 
-  generateAudio, 
-  markSegmentAsSpoken,
-  cleanupOldSpokenSegments
+  processFullScript, // Processes new content from the full script
+  getNextSegmentToSpeak, // Gets the next segment in queue
+  generateAudio, // Converts text to speech
+  markSegmentAsSpoken, // Updates segment status after playback
+  cleanupOldSpokenSegments // Removes old spoken segments
 } = require('./voice-management');
 
 const app = express();
 const PORT = process.env.VOICE_PORT || 3001;
 
-// Enable CORS and JSON parsing
+// Enable CORS for cross-origin requests and JSON request parsing
 app.use(cors());
 app.use(express.json());
 
-// Static file serving
+// Configure static file serving:
+// - Serve main frontend files from public directory
+// - Serve current audio files from scripts/current directory
+// - Serve archived audio from scripts/spoken directory
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/audio', express.static(path.join(__dirname, 'scripts/current')));
 app.use('/spoken', express.static(path.join(__dirname, 'scripts/spoken')));
 
 /**
- * Health check endpoint
+ * Health check endpoint - used to verify server is running
+ * Returns: {status: "ok", timestamp: <current date/time>}
  */
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 /**
- * Check for new script segments
+ * Check for new script segments endpoint
+ * Processes the full script file to find new content
+ * 
+ * Returns:
+ * - success: Boolean indicating if operation was successful
+ * - hasNewSegment: Boolean indicating if a new segment was found
+ * - segment: Object with new segment details (if found)
  */
 app.get('/api/check-new-segments', async (req, res) => {
   try {
+    // Process the full script to extract new content
     const newSegment = processFullScript();
     
+    // Return response with segment info if found
     res.json({ 
       success: true, 
       hasNewSegment: !!newSegment,
@@ -64,12 +81,20 @@ app.get('/api/check-new-segments', async (req, res) => {
 });
 
 /**
- * Get the next segment to speak
+ * Get the next segment to speak endpoint
+ * Retrieves the next pending/ready segment and generates audio if needed
+ * 
+ * Returns:
+ * - success: Boolean indicating if operation was successful
+ * - hasSegment: Boolean indicating if a segment was found
+ * - segment: Object with segment details (text, audio URL, etc.)
  */
 app.get('/api/next-segment', async (req, res) => {
   try {
+    // Get the next segment that needs to be spoken
     const segment = getNextSegmentToSpeak();
     
+    // If no segment available, return success but hasSegment=false
     if (!segment) {
       return res.json({ 
         success: true, 
@@ -77,17 +102,20 @@ app.get('/api/next-segment', async (req, res) => {
       });
     }
     
-    // If segment is pending, generate audio
+    // If segment is pending and doesn't have audio yet, generate it
     if (segment.status === 'pending' && !segment.audioFile) {
       console.log(`Generating audio for segment ${segment.id}`);
       
+      // Convert text to speech using Google Cloud TTS
       const audioFile = await generateAudio(segment.text, segment.id);
       if (audioFile) {
+        // Update segment with audio file path
         segment.audioFile = `/audio/${path.basename(audioFile)}`;
         segment.status = 'ready';
       }
     }
     
+    // Return segment details including audio URL
     res.json({ 
       success: true, 
       hasSegment: true,
@@ -109,11 +137,20 @@ app.get('/api/next-segment', async (req, res) => {
 });
 
 /**
- * Mark segment as spoken
+ * Mark segment as spoken endpoint
+ * Updates a segment's status to 'spoken' after playback
+ * 
+ * Params:
+ * - id: Segment ID to mark as spoken
+ * 
+ * Returns:
+ * - success: Boolean indicating if operation was successful
+ * - message: Confirmation message
  */
 app.post('/api/mark-spoken/:id', (req, res) => {
   try {
     const segmentId = parseInt(req.params.id);
+    // Update segment status and move audio file
     markSegmentAsSpoken(segmentId);
     
     res.json({ 
@@ -130,14 +167,24 @@ app.post('/api/mark-spoken/:id', (req, res) => {
 });
 
 /**
- * Force regenerate audio for a segment
+ * Force regenerate audio for a segment endpoint
+ * Regenerates audio for a specific segment (useful if TTS failed)
+ * 
+ * Params:
+ * - id: Segment ID to regenerate audio for
+ * 
+ * Returns:
+ * - success: Boolean indicating if operation was successful
+ * - audioUrl: URL to the new audio file (if successful)
  */
 app.post('/api/regenerate-audio/:id', async (req, res) => {
   try {
     const segmentId = parseInt(req.params.id);
     const segment = getNextSegmentToSpeak();
     
+    // Check if segment exists and matches the requested ID
     if (segment && segment.id === segmentId) {
+      // Regenerate audio for the segment
       const audioFile = await generateAudio(segment.text, segment.id);
       
       res.json({ 
@@ -160,10 +207,16 @@ app.post('/api/regenerate-audio/:id', async (req, res) => {
 });
 
 /**
- * Manually trigger cleanup of old spoken segments
+ * Manually trigger cleanup of old spoken segments endpoint
+ * Removes old spoken segments to save disk space
+ * 
+ * Returns:
+ * - success: Boolean indicating if operation was successful
+ * - message: Confirmation message
  */
 app.post('/api/cleanup', (req, res) => {
   try {
+    // Remove old segments based on configured retention period
     cleanupOldSpokenSegments();
     res.json({ 
       success: true,
@@ -179,18 +232,26 @@ app.post('/api/cleanup', (req, res) => {
 });
 
 /**
- * Get status of script processing system
+ * Get status of script processing system endpoint
+ * Provides diagnostics about the voice system's current state
+ * 
+ * Returns:
+ * - success: Boolean indicating if status check was successful
+ * - status: Object with system status details
+ *   - directories: Status of required directories
+ *   - counts: Number of audio files in each directory
+ *   - queue: Status of the script queue
  */
 app.get('/api/status', (req, res) => {
   try {
-    // Check if directories exist
+    // Check if required directories exist
     const dirChecks = {
       scripts: fs.existsSync(path.join(__dirname, 'scripts')),
       current: fs.existsSync(path.join(__dirname, 'scripts/current')),
       spoken: fs.existsSync(path.join(__dirname, 'scripts/spoken'))
     };
     
-    // Count files
+    // Count audio files in each directory
     const counts = {
       current: dirChecks.current ? 
         fs.readdirSync(path.join(__dirname, 'scripts/current')).filter(f => f.endsWith('.mp3')).length : 0,
@@ -202,13 +263,14 @@ app.get('/api/status', (req, res) => {
     let queue = { segments: [] };
     if (fs.existsSync(path.join(__dirname, 'scripts/queue.json'))) {
       try {
+        // Parse the queue file to get current segments
         queue = JSON.parse(fs.readFileSync(path.join(__dirname, 'scripts/queue.json'), 'utf8'));
       } catch (e) {
         console.error('Error parsing queue file:', e);
       }
     }
     
-    // Segment stats
+    // Calculate statistics for segments by status
     const segmentStats = {
       total: queue.segments.length,
       pending: queue.segments.filter(s => s.status === 'pending').length,
@@ -216,6 +278,7 @@ app.get('/api/status', (req, res) => {
       spoken: queue.segments.filter(s => s.status === 'spoken').length
     };
     
+    // Return comprehensive status of the voice system
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -233,12 +296,17 @@ app.get('/api/status', (req, res) => {
   }
 });
 
-// Start the server
+/**
+ * Start the server and initialize background processes
+ * - Sets up periodic script processing
+ * - Performs initial cleanup of old segments
+ * - Displays server information in the console
+ */
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║            🎙️ RADIOO VOICE SERVER STARTED 🎙️                 ║
+║            🎙️ CRYPTO FM VOICE SERVER STARTED 🎙️            ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 
@@ -251,16 +319,17 @@ Voice server running on port ${PORT}
 Press Ctrl+C to stop the server.
 `);
 
-  // Start periodic check for new segments
+  // Start periodic check for new segments (every 10 seconds)
   const CHECK_INTERVAL = 10000; // 10 seconds
   setInterval(() => {
     try {
+      // Process new content from the full script periodically
       processFullScript();
     } catch (error) {
       console.error('Error in periodic script processing:', error);
     }
   }, CHECK_INTERVAL);
   
-  // Daily cleanup
+  // Perform initial cleanup of old spoken segments
   cleanupOldSpokenSegments();
 }); 

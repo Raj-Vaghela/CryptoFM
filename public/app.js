@@ -1,6 +1,21 @@
 /**
- * RADIOO Frontend Player
- * Handles audio playback and UI interactions for vintage radio interface
+ * Crypto FM - Cryptocurrency Radio Frontend
+ * 
+ * This script powers the interactive frontend for the Crypto FM application,
+ * a vintage-styled radio interface for cryptocurrency news and information.
+ * 
+ * Main features:
+ * - Volume control via custom slider
+ * - Audio player management for streaming content
+ * - Cryptocurrency data display and updates
+ * - Status indicator management
+ * - Touch and mouse event handling
+ * 
+ * The application follows a modular design pattern with separate concerns for:
+ * - UI interaction and updates
+ * - Audio playback control
+ * - Data fetching and display
+ * - Connection status management
  */
 
 $(document).ready(function() {
@@ -8,7 +23,7 @@ $(document).ready(function() {
   const audioPlayer = document.getElementById('audioPlayer');
   const currentTranscript = $('#currentTranscript');
   const volumeHandle = document.getElementById('volumeHandle');
-  const volumeTrack = volumeHandle.parentElement;
+  const volumeTrack = document.querySelector('.slider-track');
   const tickerTape = document.getElementById('tickerTape');
   const statusIndicator = document.querySelector('.status-indicator');
   
@@ -29,13 +44,13 @@ $(document).ready(function() {
   let isPlayerInitialized = false;
   let lastSegmentCheck = 0;
   let connectionAttempts = 0;
-  let volumePosition = 0.7; // Starting position (0-1)
+  let volumeLevel = 0.7; // Starting volume (0-1)
   let activeTab = 'eth';
   let activeCategory = 'top-nfts';
   const MAX_CONNECTION_ATTEMPTS = 5;
   
-  // Set initial volume (mid-level)
-  audioPlayer.volume = volumePosition;
+  // Set initial volume
+  audioPlayer.volume = volumeLevel;
   
   // Audio player event listeners
   audioPlayer.addEventListener('ended', function() {
@@ -112,146 +127,214 @@ $(document).ready(function() {
     }
   }
   
-  // Initialize slider position
+  // ---------- Volume Slider Implementation ----------
+  
+  /**
+   * Initialize the volume slider
+   */
   function initializeVolumeSlider() {
-    // Set volume slider to 70%
-    volumePosition = 0.7;
-    updateVolumeSlider(volumePosition);
+    // Set default volume level
+    volumeLevel = 0.7;
     
-    // Set initial audio volume
-    audioPlayer.volume = volumePosition;
+    // Update the visual slider and audio player volume
+    updateSliderUI(volumeLevel);
+    audioPlayer.volume = volumeLevel;
+    
+    // Add event listeners
+    setupVolumeEvents();
   }
   
-  // Update volume slider position and fill
-  function updateVolumeSlider(position) {
-    // Ensure position is between 0 and 1
-    position = Math.max(0, Math.min(1, position));
+  /**
+   * Updates the UI of the slider based on current volume level
+   * @param {number} level - Volume level (0-1)
+   */
+  function updateSliderUI(level) {
+    // Ensure level is between 0 and 1
+    level = Math.max(0, Math.min(1, level));
+    
+    // Calculate position as percentage
+    const position = `${level * 100}%`;
     
     // Update handle position
-    const leftPosition = position * 100;
-    volumeHandle.style.left = `${leftPosition}%`;
+    volumeHandle.style.left = position;
     
-    // Update the track's before pseudo-element width through CSS variable
-    document.documentElement.style.setProperty('--volume-fill-width', `${leftPosition}%`);
-    
-    // Also directly set the width as a backup in case CSS variable doesn't work
-    const fillTrack = volumeTrack.querySelector('.fill-track');
-    if (!fillTrack) {
-      // Create fill track element if it doesn't exist
-      const newFillTrack = document.createElement('div');
-      newFillTrack.className = 'fill-track';
-      newFillTrack.style.position = 'absolute';
-      newFillTrack.style.left = '0';
-      newFillTrack.style.top = '0';
-      newFillTrack.style.height = '100%';
-      newFillTrack.style.backgroundColor = '#b8ed86';
-      newFillTrack.style.borderRadius = '3px';
-      newFillTrack.style.boxShadow = '0 0 6px rgba(184, 237, 134, 0.5)';
-      newFillTrack.style.pointerEvents = 'none';
-      newFillTrack.style.width = `${leftPosition}%`;
-      volumeTrack.appendChild(newFillTrack);
-    } else {
-      fillTrack.style.width = `${leftPosition}%`;
-    }
+    // Update CSS variable for the track fill
+    document.documentElement.style.setProperty('--volume-fill-width', position);
   }
   
-  // Handle volume slider movement
-  let isDraggingVolume = false;
+  /**
+   * Setup all event listeners for the volume slider
+   */
+  function setupVolumeEvents() {
+    // Mouse events
+    volumeHandle.addEventListener('mousedown', handleDragStart);
+    volumeTrack.addEventListener('click', handleTrackClick);
+    
+    // Touch events
+    volumeHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+    
+    // Hover effects
+    volumeHandle.addEventListener('mouseover', () => {
+      document.body.style.cursor = 'grab';
+    });
+    
+    volumeHandle.addEventListener('mouseout', () => {
+      if (!isDragging) {
+        document.body.style.cursor = 'default';
+      }
+    });
+  }
   
-  // Event handlers for volume slider - improve by adding event capture phase
-  volumeHandle.addEventListener('mousedown', function(e) {
-    isDraggingVolume = true;
+  // Dragging state
+  let isDragging = false;
+  
+  /**
+   * Handle the start of a drag operation
+   * @param {MouseEvent} e - The mouse event
+   */
+  function handleDragStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    isDragging = true;
     document.body.style.cursor = 'grabbing';
-    e.preventDefault();
-    e.stopPropagation();
     
-    // Initial position update on mousedown
-    const trackRect = volumeTrack.getBoundingClientRect();
-    const trackWidth = trackRect.width;
-    const relativeX = Math.max(0, Math.min(e.clientX - trackRect.left, trackWidth));
-    volumePosition = relativeX / trackWidth;
-    updateVolumeSlider(volumePosition);
-    audioPlayer.volume = volumePosition;
+    // Add no-transition class to remove lag during interaction
+    volumeTrack.classList.add('no-transition');
     
-    // Capture event to handle cases where mouse moves out of slider handle
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, true);
-  
-  // Mouse handlers as separate functions to enable proper cleanup
-  function handleMouseMove(e) {
-    handleVolumeSliderMove(e.clientX);
+    // Update volume based on initial click position
+    updateVolumeFromEvent(e);
+    
+    // Add document-level event listeners
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
   }
   
-  function handleMouseUp() {
-    isDraggingVolume = false;
+  /**
+   * Handle mouse movement during drag
+   * @param {MouseEvent} e - The mouse event
+   */
+  function handleDragMove(e) {
+    if (!isDragging) return;
+    updateVolumeFromEvent(e);
+  }
+  
+  /**
+   * Handle the end of a drag operation
+   */
+  function handleDragEnd() {
+    isDragging = false;
     document.body.style.cursor = 'default';
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    
+    // Remove no-transition class to restore smooth transitions
+    volumeTrack.classList.remove('no-transition');
+    
+    // Remove document-level event listeners
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
   }
   
-  // Touch events with more robust handling
-  volumeHandle.addEventListener('touchstart', function(e) {
-    isDraggingVolume = true;
+  /**
+   * Handle click on the track to update volume
+   * @param {MouseEvent} e - The mouse event
+   */
+  function handleTrackClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    updateVolumeFromEvent(e);
+  }
+  
+  /**
+   * Handle touch start for mobile devices
+   * @param {TouchEvent} e - The touch event
+   */
+  function handleTouchStart(e) {
     e.preventDefault();
     e.stopPropagation();
     
+    isDragging = true;
+    
+    // Add no-transition class to remove lag during interaction
+    volumeTrack.classList.add('no-transition');
+    
+    // Update volume based on initial touch position
+    const touch = e.touches[0];
+    updateVolumeFromClientX(touch.clientX);
+    
+    // Add document-level event listeners
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
     document.addEventListener('touchcancel', handleTouchEnd);
-  }, { passive: false });
-  
-  function handleTouchMove(e) {
-    if (!isDraggingVolume) return;
-    e.preventDefault(); // Prevent scrolling
-    handleVolumeSliderMove(e.touches[0].clientX);
   }
   
+  /**
+   * Handle touch movement
+   * @param {TouchEvent} e - The touch event
+   */
+  function handleTouchMove(e) {
+    if (!isDragging) return;
+    e.preventDefault(); // Prevent scrolling
+    
+    const touch = e.touches[0];
+    updateVolumeFromClientX(touch.clientX);
+  }
+  
+  /**
+   * Handle touch end
+   */
   function handleTouchEnd() {
-    isDraggingVolume = false;
+    isDragging = false;
+    
+    // Remove no-transition class to restore smooth transitions
+    volumeTrack.classList.remove('no-transition');
+    
+    // Remove document-level event listeners
     document.removeEventListener('touchmove', handleTouchMove);
     document.removeEventListener('touchend', handleTouchEnd);
     document.removeEventListener('touchcancel', handleTouchEnd);
   }
   
-  // Track click handler - immediately update volume on click
-  volumeTrack.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
+  /**
+   * Calculate and update volume from a mouse or touch event
+   * @param {MouseEvent|TouchEvent} e - The event
+   */
+  function updateVolumeFromEvent(e) {
+    updateVolumeFromClientX(e.clientX);
+  }
+  
+  /**
+   * Calculate and update volume from client X position
+   * @param {number} clientX - The clientX position
+   */
+  function updateVolumeFromClientX(clientX) {
     const trackRect = volumeTrack.getBoundingClientRect();
     const trackWidth = trackRect.width;
-    const relativeX = Math.max(0, Math.min(e.clientX - trackRect.left, trackWidth));
+    const relativeX = Math.max(0, Math.min(clientX - trackRect.left, trackWidth));
     
-    // Calculate new volume position (0-1)
-    volumePosition = relativeX / trackWidth;
+    // Calculate new volume level (0-1)
+    volumeLevel = relativeX / trackWidth;
     
-    // Update slider position and fill
-    updateVolumeSlider(volumePosition);
+    // Update slider UI
+    updateSliderUI(volumeLevel);
     
-    // Update audio volume
-    audioPlayer.volume = volumePosition;
+    // Update audio player volume
+    audioPlayer.volume = volumeLevel;
     
-    // Pause/play based on volume level
-    if (volumePosition < 0.05) {
-      if (isPlaying && audioPlayer.src) {
-        audioPlayer.pause();
-      }
-    } else if (!isPlaying && audioPlayer.src && audioPlayer.paused) {
+    // Toggle play/pause based on volume level
+    handleVolumePlayback();
+  }
+  
+  /**
+   * Handle playback based on current volume level
+   * Allows playback to continue even at zero volume
+   */
+  function handleVolumePlayback() {
+    // Continue playback even if volume is zero
+    if (!isPlaying && audioPlayer.src && audioPlayer.paused) {
+      // Resume playback if paused
       audioPlayer.play().catch(handlePlayError);
     }
-  });
-  
-  // Add cursor styles on hover
-  volumeHandle.addEventListener('mouseover', function() {
-    document.body.style.cursor = 'grab';
-  });
-  
-  volumeHandle.addEventListener('mouseout', function() {
-    if (!isDraggingVolume) {
-      document.body.style.cursor = 'default';
-    }
-  });
+  }
   
   // Tab switching
   document.querySelectorAll('.tab').forEach(tab => {
@@ -321,6 +404,10 @@ $(document).ready(function() {
     return $.get('/api/status');
   }
   
+  /**
+   * Play the next available audio segment
+   * Handles playback and UI updates
+   */
   function playNextSegment() {
     getNextSegment()
       .done(function(data) {
@@ -334,14 +421,8 @@ $(document).ready(function() {
           // Play audio if available
           if (segment.audioUrl) {
             audioPlayer.src = segment.audioUrl;
-            // Only play if volume is not at minimum
-            if (audioPlayer.volume > 0.05) {
-              audioPlayer.play().catch(handlePlayError);
-            } else {
-              // Mark as not playing but ready to play when volume increases
-              isPlaying = false;
-              updateStatusIndicator('paused');
-            }
+            // Always play audio regardless of volume level
+            audioPlayer.play().catch(handlePlayError);
           } else {
             console.warn('No audio available for segment');
             
@@ -366,6 +447,7 @@ $(document).ready(function() {
         // Increment connection attempts
         connectionAttempts++;
         
+        // Implement retry with backoff
         if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
           setTimeout(playNextSegment, 5000);
         } else {
@@ -416,8 +498,6 @@ $(document).ready(function() {
       priceChange.classList.add('negative');
       priceChange.classList.remove('positive');
     }
-    
-    // We're no longer updating the ticker here since we have custom text in the HTML
   }
   
   // Initialize the application
@@ -425,7 +505,7 @@ $(document).ready(function() {
     // Add CSS variable for volume fill
     document.documentElement.style.setProperty('--volume-fill-width', '70%');
     
-    // Initialize volume slider
+    // Initialize volume slider with our new approach
     initializeVolumeSlider();
     
     // Load initial crypto data
@@ -449,8 +529,8 @@ $(document).ready(function() {
         .done(function(data) {
           if (data.success) {
             // If API is healthy but player is not playing anything,
-            // try to restart playback if volume is not at minimum
-            if (!isPlaying && connectionAttempts < MAX_CONNECTION_ATTEMPTS && audioPlayer.volume > 0.05) {
+            // try to restart playback regardless of volume level
+            if (!isPlaying && connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
               playNextSegment();
             }
           }
@@ -460,4 +540,4 @@ $(document).ready(function() {
   
   // Start the application
   initialize();
-}); 
+});

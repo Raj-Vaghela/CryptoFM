@@ -1,5 +1,5 @@
 /**
- * RADIOO - Voice Management System
+ * Crypto FM - Voice Management System
  * 
  * Handles script tracking, Google Cloud TTS integration, and audio file management
  */
@@ -115,7 +115,11 @@ async function generateAudio(text, segmentId) {
   try {
     // Clean up text to avoid any unexpected characters
     // Remove any remaining sound effects or bracketed content
-    const cleanText = text.replace(/\[.*?\]/g, '');
+    let cleanText = text.replace(/\[.*?\]/g, '');
+    
+    // Remove any SSML tags if present
+    cleanText = cleanText.replace(/<phoneme[^>]*>([^<]*)<\/phoneme>/g, '$1');
+    cleanText = cleanText.replace(/<[^>]+>/g, ''); // Remove any remaining XML/SSML tags
     
     // Split text into smaller chunks if it's too long
     // Google TTS has a 5000 character limit per request
@@ -246,8 +250,10 @@ function processFullScript() {
       queue.lastPosition = fullScript.length;
       updateScriptQueue(queue);
       
-      // Clean up any bracketed content
-      const cleanContent = newContent.replace(/\[.*?\]/g, '').trim();
+      // Clean up any bracketed content and SSML tags
+      let cleanContent = newContent.replace(/\[.*?\]/g, '').trim();
+      cleanContent = cleanContent.replace(/<phoneme[^>]*>([^<]*)<\/phoneme>/g, '$1');
+      cleanContent = cleanContent.replace(/<[^>]+>/g, ''); // Remove any remaining XML/SSML tags
       
       // Add as new segment if there's new content
       if (cleanContent) {
