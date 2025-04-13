@@ -16,7 +16,7 @@ const CURRENT_DIR = path.join(__dirname, 'scripts/current');
 const QUEUE_FILE = path.join(__dirname, 'scripts/queue.json');
 
 // Google Cloud TTS Configuration
-const GOOGLE_CLOUD_TTS_API_KEY = process.env.GOOGLE_CLOUD_TTS_API_KEY || "AIzaSyAOloEpj-ZHJF6U08cDq9FbpYiLzosKQ5Y";
+const GOOGLE_CLOUD_TTS_API_KEY = process.env.GOOGLE_CLOUD_TTS_API_KEY;
 const GCP_VOICE_NAME = 'en-GB-Chirp3-HD-Orus'; // British voice with premium quality
 const GCP_VOICE_LANGUAGE = process.env.GCP_VOICE_LANGUAGE || 'en-GB';
 const GCP_VOICE_GENDER = process.env.GCP_VOICE_GENDER || 'MALE';
