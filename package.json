@@ -15,6 +15,7 @@
     "start:analyst": "node data-analyst-agent.js",
     "start:jockey": "node radio-jockey-agent.js",
     "start:voice": "node voice-server.js",
+    "vercel-build": "node vercel-setup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

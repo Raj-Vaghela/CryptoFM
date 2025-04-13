@@ -9,11 +9,14 @@ const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
 
-// Directory structure
-const SCRIPTS_DIR = path.join(__dirname, 'scripts');
-const SPOKEN_DIR = path.join(__dirname, 'scripts/spoken');
-const CURRENT_DIR = path.join(__dirname, 'scripts/current');
-const QUEUE_FILE = path.join(__dirname, 'scripts/queue.json');
+// Check for production environment (Vercel)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Directory structure - use /tmp for Vercel environment
+const SCRIPTS_DIR = isProduction ? '/tmp/scripts' : path.join(__dirname, 'scripts');
+const SPOKEN_DIR = isProduction ? '/tmp/scripts/spoken' : path.join(__dirname, 'scripts/spoken');
+const CURRENT_DIR = isProduction ? '/tmp/scripts/current' : path.join(__dirname, 'scripts/current');
+const QUEUE_FILE = isProduction ? '/tmp/scripts/queue.json' : path.join(__dirname, 'scripts/queue.json');
 
 // Google Cloud TTS Configuration
 const GOOGLE_CLOUD_TTS_API_KEY = process.env.GOOGLE_CLOUD_TTS_API_KEY;

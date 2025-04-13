@@ -13,19 +13,33 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { 
+  getScriptQueue, 
+  addSegmentToQueue, 
+  markSegmentAsSpoken, 
+  getNextSegmentToSpeak, 
+  generateAudio, 
+  cleanupOldSpokenSegments 
+} = require('./voice-management');
 require('dotenv').config();
 
-// Import voice management functions from the voice-management module
-const { 
-  processFullScript, // Processes new content from the full script
-  getNextSegmentToSpeak, // Gets the next segment in queue
-  generateAudio, // Converts text to speech
-  markSegmentAsSpoken, // Updates segment status after playback
-  cleanupOldSpokenSegments // Removes old spoken segments
-} = require('./voice-management');
+// Vercel environment setup
+const isProduction = process.env.NODE_ENV === 'production';
+// Use tmp directories in production (Vercel) environment
+const SCRIPTS_DIR = isProduction ? '/tmp/scripts' : path.join(__dirname, 'scripts');
+
+// Ensure directories exist in production environment
+if (isProduction) {
+  try {
+    // Load and run setup script 
+    require('./vercel-setup').ensureDirectories();
+  } catch (error) {
+    console.error('Error setting up Vercel environment:', error);
+  }
+}
 
 const app = express();
-const PORT = process.env.VOICE_PORT || 3001;
+const PORT = process.env.VOICE_PORT || process.env.PORT || 3001;
 
 // Enable CORS for cross-origin requests and JSON request parsing
 app.use(cors());
@@ -36,7 +50,7 @@ app.use(express.json());
 // - Serve current audio files from scripts/current directory
 // - Serve archived audio from scripts/spoken directory
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/audio', express.static(path.join(__dirname, 'scripts/current')));
+app.use('/audio', express.static(isProduction ? '/tmp/scripts/current' : path.join(__dirname, 'scripts/current')));
 app.use('/spoken', express.static(path.join(__dirname, 'scripts/spoken')));
 
 /**
