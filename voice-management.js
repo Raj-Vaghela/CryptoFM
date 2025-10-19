@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const { Readable } = require('stream');
 require('dotenv').config();
 
 // Directory structure
@@ -296,6 +297,112 @@ function processFullScript() {
   return null;
 }
 
+/**
+ * Generates an audio stream directly from Google TTS without saving to file
+ * @param {string} text - The text to convert to speech
+ * @param {number} segmentId - The ID of the segment
+ * @returns {Readable} A readable stream of the audio data
+ */
+async function generateAudioStream(text, segmentId) {
+  if (!GOOGLE_CLOUD_TTS_API_KEY) {
+    throw new Error('Google Cloud TTS API key not configured');
+  }
+  
+  try {
+    // Clean up text (same as in generateAudio)
+    let cleanText = text.replace(/\[.*?\]/g, '');
+    cleanText = cleanText.replace(/<phoneme[^>]*>([^<]*)<\/phoneme>/g, '$1');
+    cleanText = cleanText.replace(/<[^>]+>/g, '');
+    
+    // Split text into chunks if needed
+    const MAX_CHARS = 4500;
+    const textChunks = [];
+    
+    if (cleanText.length > MAX_CHARS) {
+      let startIndex = 0;
+      while (startIndex < cleanText.length) {
+        let endIndex = startIndex + MAX_CHARS;
+        if (endIndex >= cleanText.length) {
+          textChunks.push(cleanText.substring(startIndex));
+          break;
+        }
+        
+        const chunk = cleanText.substring(startIndex, endIndex);
+        const sentenceEndRegex = /[.!?]\s+(?=[A-Z])/g;
+        let matches = [...chunk.matchAll(sentenceEndRegex)];
+        
+        if (matches.length > 0) {
+          const lastMatch = matches[matches.length - 1];
+          endIndex = startIndex + lastMatch.index + 2;
+        } else {
+          const lastComma = chunk.lastIndexOf(', ');
+          if (lastComma > 0) {
+            endIndex = startIndex + lastComma + 2;
+          }
+        }
+        
+        textChunks.push(cleanText.substring(startIndex, endIndex));
+        startIndex = endIndex;
+      }
+    } else {
+      textChunks.push(cleanText);
+    }
+    
+    // Create a readable stream
+    const stream = new Readable({
+      read() {}
+    });
+    
+    // Process chunks and stream them
+    for (let i = 0; i < textChunks.length; i++) {
+      const chunk = textChunks[i];
+      
+      const audioConfig = {
+        audioEncoding: 'MP3'
+      };
+      
+      if (GCP_VOICE_LANGUAGE === 'en-US') {
+        audioConfig.speakingRate = 0.97;
+        audioConfig.pitch = 0.0;
+        audioConfig.volumeGainDb = 0.0;
+      }
+      
+      const response = await axios({
+        method: 'POST',
+        url: `${TTS_API_ENDPOINT}?key=${GOOGLE_CLOUD_TTS_API_KEY}`,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data: {
+          input: { text: chunk },
+          voice: {
+            languageCode: GCP_VOICE_LANGUAGE,
+            name: GCP_VOICE_NAME,
+            ssmlGender: GCP_VOICE_GENDER
+          },
+          audioConfig: audioConfig
+        }
+      });
+      
+      // Push the audio data to the stream
+      const audioContent = Buffer.from(response.data.audioContent, 'base64');
+      stream.push(audioContent);
+    }
+    
+    // End the stream
+    stream.push(null);
+    
+    return stream;
+    
+  } catch (error) {
+    console.error('Error generating audio stream:', error.message);
+    if (error.response) {
+      console.error('API Response:', error.response.data);
+    }
+    throw error;
+  }
+}
+
 // Run cleanup daily
 setInterval(cleanupOldSpokenSegments, 24 * 60 * 60 * 1000);
 
@@ -304,5 +411,7 @@ module.exports = {
   getNextSegmentToSpeak,
   generateAudio,
   markSegmentAsSpoken,
-  cleanupOldSpokenSegments
+  cleanupOldSpokenSegments,
+  generateAudioStream,
+  getScriptQueue
 }; 

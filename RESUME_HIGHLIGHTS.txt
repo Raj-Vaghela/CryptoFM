@@ -1,0 +1,57 @@
+Crypto FM — Agentic AI Cryptocurrency Radio (Encode AI London 2025)
+
+Summary
+- Built an agentic AI system that ingests real-time crypto market signals, synthesizes insights with Gemini, and streams a British DJ–style broadcast via Google Cloud TTS to a vintage web UI.
+- Multi-agent architecture with clear separation of concerns (Data API, Analyst Agent, Voice/TTS, UI), robust rate limiting, and production-lean observability.
+
+Core Technologies
+- Node.js, Express, Axios, dotenv
+- Google Cloud Text-to-Speech (TTS)
+- Google Gemini 2.0 Flash (@google/generative-ai)
+- Data sources: CoinGecko, Whale Alert, CryptoPanic
+- Frontend: HTML, CSS, jQuery, Bootstrap
+
+Agentic Architecture (High-Level)
+- Data API Server (data-api-server.js): Aggregates market/global, top/trending, detailed coin data; whale transfers; news; simulated exchange flows; exposes REST endpoints with in-memory store and file logging.
+- Analyst Agent (data-analyst-agent.js): Pulls aggregated data; prompts Gemini to produce structured Markdown analyst reports; saves to reports/ with latest file.
+- Voice/TTS (voice-server.js, voice-management.js): Script queue; TTS generation (file-based) and direct streaming endpoint; segment lifecycle (pending -> ready -> spoken) and cleanup policies.
+- Logger/Operator Tools: Continuous data logger (server.js), monitor with auto-restart (monitor.js), operator menu (agent-control.js), exchange-flow simulator (exchange-flow.js).
+- Frontend (public/): Vintage radio UI, custom volume control, status LEDs, ticker, auto-playing audio via streaming endpoint.
+
+Data Engineering & Reliability
+- Quota-aware rate limiting for CoinGecko: minute-window counters, 3–6s minimum inter-call delay, sequential orchestration, and 429 backoff/cool-off.
+- Structured logging to logs/ with heartbeats and memory telemetry; error logs with stack traces; graceful shutdown handlers.
+- Defensive API fallbacks (CoinGecko -> CryptoPanic for news; simulated exchange flows when paid APIs are unavailable).
+
+Voice & Streaming Pipeline
+- Dual-mode playback: file-based MP3 generation for queueing and low-latency streaming via /api/stream-audio/:segmentId.
+- Segment state machine with id/timestamps; automatic retention policy and daily cleanup for spoken segments.
+- Player resilience: retry/backoff on failures; UI status indicators (playing/paused/error/disconnected).
+
+APIs (Selected)
+- Data API: GET /health, GET /api/status, GET /api/data/{market-global,top-coins,trending-coins,detailed-coins,whale-transactions,crypto-news,exchange-flows}, POST /api/actions/fetch
+- Voice API: GET /api/check-new-segments, GET /api/next-segment, POST /api/mark-spoken/:id, POST /api/regenerate-audio/:id, POST /api/cleanup, GET /api/status, GET /api/stream-audio/:segmentId
+
+Security & Config
+- Environment variables: COINGECKO_API_KEY, WHALE_ALERT_API_KEY, CRYPTO_PANIC_API_KEY, GOOGLE_CLOUD_TTS_API_KEY, GEMINI_API_KEY
+- Ensure no hardcoded API keys in source; keep .env out of version control.
+
+Developer Experience
+- One-command startup: npm run start:all; individual scripts for API, voice, analyst, logger, monitor.
+- Readable CLI broadcaster for demos (radio.js supports markets/whales/news/track/interval/coindata modes).
+
+User Experience
+- Vintage radio interface with responsive layout; custom touch/mouse volume slider; "LIVE" status LEDs; animated ticker; autoplay of fresh segments via streaming TTS.
+
+Resume Talking Points
+- Agentic AI system design; prompt strategy and depth-limited data to control token costs.
+- Quota-aware integration with third-party APIs and robust error/backoff strategies.
+- Low-latency TTS streaming pipeline with segment lifecycle management.
+- Production-lean ops: process monitoring, heartbeats, memory telemetry, structured logs, graceful shutdown.
+
+Noteworthy Files
+- data-api-server.js, server.js, data-analyst-agent.js, voice-server.js, voice-management.js, radio.js, exchange-flow.js, monitor.js, public/app.js, public/index.html, public/style.css
+
+Future Enhancements
+- Namespace overlapping /api/status across services or document port usage; add auth/rate limiting on public endpoints.
+- Persist cache/DB for data store; add metrics dashboard and structured JSON logs.

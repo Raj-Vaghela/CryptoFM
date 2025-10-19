@@ -411,88 +411,37 @@ $(document).ready(function() {
    * Plays the next audio segment from the server
    */
   function playNextSegment() {
-    // Don't try to play if we're already playing
-    if (audioPlayer.currentTime > 0 && !audioPlayer.paused && !audioPlayer.ended) {
-      return;
-    }
-    
-    // Update UI to show loading state
-    updateStatusIndicator('loading');
-    currentTranscript.html('<em>Loading next segment...</em>');
-    
-    // Fetch the next segment from the server
+    // Get the next segment to play
     getNextSegment()
-      .then(response => {
-        if (response.hasSegment) {
-          const segment = response.segment;
-          currentSegmentId = segment.id;
-          
-          // Update the transcript text
-          currentTranscript.html(segment.text);
-          
-          // Set the audio source and play when ready
-          if (segment.audioUrl) {
-            // Add timestamp parameter to prevent browser caching
-            const cacheBuster = new Date().getTime();
-            const audioUrl = `${segment.audioUrl}?t=${cacheBuster}`;
-            
-            // Preload the next audio before playing
-            audioPlayer.src = audioUrl;
-            audioPlayer.load(); // Explicitly load the audio
-            
-            // Set a small pause before playing to allow for buffering
-            setTimeout(() => {
-              // Start playback
-              const playPromise = audioPlayer.play();
-              
-              // Handle play promise (might be rejected if user hasn't interacted with page)
-              if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                  console.error('Playback error:', error);
-                  updateStatusIndicator('paused');
-                  
-                  // Show play button if autoplay isn't allowed
-                  $('#playButton').show();
-                });
-              }
-            }, 800); // Increased from 500ms to 800ms for better buffering
-            
-            // Schedule the next segment check earlier than the end
-            // This helps preload the next segment for a smoother transition
-            audioPlayer.addEventListener('timeupdate', function checkTimeForNextSegment() {
-              if (audioPlayer.duration && audioPlayer.currentTime > 0) {
-                const timeLeft = audioPlayer.duration - audioPlayer.currentTime;
-                if (timeLeft <= 5 && timeLeft > 0) {
-                  audioPlayer.removeEventListener('timeupdate', checkTimeForNextSegment);
-                  checkNewSegments();
-                }
-              }
-            });
-            
-          } else {
-            // No audio URL available
-            currentTranscript.html('<em>Audio for this segment is still generating. Please wait...</em>');
-            // Retry after 3 seconds
-            setTimeout(playNextSegment, 3000);
-          }
-        } else {
-          // No segment available yet
-          if (lastSegmentCheck === 0) {
-            // First check - show initial message
-            currentTranscript.html('<em>Waiting for the broadcast to begin. The AI DJ is preparing the latest crypto news for you...</em>');
-          } else {
-            // Subsequent check - show waiting message
-            currentTranscript.html('<em>The broadcast will continue shortly. Our AI DJ is analyzing the latest market data...</em>');
-          }
-          
-          // Check for new segments in 5 seconds
-          setTimeout(checkNewSegments, 5000);
+      .then(segment => {
+        if (!segment) {
+          console.log('No new segments available');
+          currentTranscript.text('Waiting for new content...');
+          updateStatusIndicator('waiting');
+          return;
         }
+
+        currentSegmentId = segment.id;
+        currentTranscript.text(segment.text);
         
-        lastSegmentCheck = Date.now();
+        // Use the streaming endpoint instead of audio file
+        const streamUrl = `/api/stream-audio/${segment.id}`;
+        audioPlayer.src = streamUrl;
+        
+        // Play the audio
+        audioPlayer.play()
+          .catch(error => {
+            console.error('Error playing audio:', error);
+            handlePlayError(error);
+          });
       })
       .catch(error => {
-        handlePlayError(error);
+        console.error('Error getting next segment:', error);
+        currentTranscript.text('Error getting next segment. Retrying...');
+        updateStatusIndicator('error');
+        
+        // Retry after a delay
+        setTimeout(playNextSegment, 2000);
       });
   }
   

@@ -13,6 +13,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const { Readable } = require('stream');
 require('dotenv').config();
 
 // Import voice management functions from the voice-management module
@@ -20,8 +21,10 @@ const {
   processFullScript, // Processes new content from the full script
   getNextSegmentToSpeak, // Gets the next segment in queue
   generateAudio, // Converts text to speech
+  generateAudioStream, // New function for streaming
   markSegmentAsSpoken, // Updates segment status after playback
-  cleanupOldSpokenSegments // Removes old spoken segments
+  cleanupOldSpokenSegments, // Removes old spoken segments
+  getScriptQueue // Added for the new streaming endpoint
 } = require('./voice-management');
 
 const app = express();
@@ -293,6 +296,47 @@ app.get('/api/status', (req, res) => {
       success: false, 
       error: error.message 
     });
+  }
+});
+
+/**
+ * Streaming endpoint for audio
+ * Streams the audio directly from Google TTS without saving to file
+ */
+app.get('/api/stream-audio/:segmentId', async (req, res) => {
+  try {
+    const { segmentId } = req.params;
+    const queue = getScriptQueue();
+    const segment = queue.segments.find(s => s.id === parseInt(segmentId));
+    
+    if (!segment) {
+      return res.status(404).json({ error: 'Segment not found' });
+    }
+    
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    
+    // Generate and stream the audio
+    const audioStream = await generateAudioStream(segment.text, segmentId);
+    
+    // Pipe the audio stream to the response
+    audioStream.pipe(res);
+    
+    // Handle stream errors
+    audioStream.on('error', (error) => {
+      console.error('Stream error:', error);
+      res.end();
+    });
+    
+    // Mark segment as spoken when streaming completes
+    audioStream.on('end', () => {
+      markSegmentAsSpoken(segmentId);
+    });
+    
+  } catch (error) {
+    console.error('Error streaming audio:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

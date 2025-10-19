@@ -1,53 +1,35 @@
-# Dependency directories
+# Node dependencies
 node_modules/
 
-# Environment variables
+# Environment files
 .env
-.env.local
-.env.development
-.env.test
-.env.production
+.env.*
+!.env.example
 
-# Log files
+# Logs and diagnostics
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Runtime/generated audio and queues
+scripts/current/
+scripts/spoken/
+scripts/queue.json
 
-# Audio files
-scripts/current/*.mp3
-scripts/spoken/*.mp3
+# Backup or temp files
+public/app.js.bak
+*.tmp
+*.swp
+*.swo
 
-# API keys and secrets
-.env
-
-# Coverage directory
-coverage/
-
-# Generated files
-dist/
-build/
-tmp/
-
-# Cache directories
-.npm
-.eslintcache
-.cache/
-
-# OS specific files
+# OS files
 .DS_Store
 Thumbs.db
-Desktop.ini
 
-# Editor directories and files
-.idea/
-.vscode/
-*.swp
-*.swo 
+# Coverage/build (if any)
+coverage/
+dist/
+build/ 
