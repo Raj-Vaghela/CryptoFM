@@ -38,7 +38,7 @@ Crypto FM consists of several interconnected components:
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/crypto-fm.git
+git clone https://github.com/Raj-Vaghela/CryptoFM.git
 cd crypto-fm
 ```
 
@@ -175,3 +175,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Google Gemini for AI-generated content
 - Various cryptocurrency data providers
 - Bootstrap and jQuery for frontend components
+
+## Status and forward plan
+
+This is a hackathon-originated prototype, not a production financial information service or proof of trading performance. The app relies on external feeds and AI/TTS providers; provider access and data rights are required to use the live functionality. See [ROADMAP.md](ROADMAP.md) for proposed future development, testing and reliability improvements. Planned work and original ownership must be confirmed by the maintainer.
